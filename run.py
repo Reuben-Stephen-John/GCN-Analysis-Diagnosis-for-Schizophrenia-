@@ -152,7 +152,7 @@ def main():
         print(f"Epoch {epoch}/{num_epochs}: "
             f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
             f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")
-        # Append losses for plotting
+                # Append losses for plotting
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 

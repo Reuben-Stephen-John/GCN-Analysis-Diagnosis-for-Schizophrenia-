@@ -23,3 +23,26 @@ def create_data_object(sub_conn_matrix, label, dimensions, order, threshold=0.5)
     data = Data(x=node_features, edge_index=edge_index, y=torch.tensor(label,dtype=torch.long))
     
     return data
+
+def create_labels():
+    label=[]
+    subject_fc_matrices=np.load('source_data/fc/fc_matrices.npy')
+    print(f"Number of Subjects {len(subject_fc_matrices)}")
+    for i in range(len(subject_fc_matrices)):
+        if i <25:
+            label.append(0)
+        if i >= 25 and i<48:
+            label.append(1)
+        if i >=48:
+            label.append(2)
+
+    all_labels = np.array(label)
+    num_classes=len(set(label))
+    # Find unique labels and their counts
+    unique_labels, counts = np.unique(all_labels, return_counts=True)
+    # Create a dictionary to store the counts for each unique label
+    label_counts = dict(zip(unique_labels, counts))
+    # Print the results
+    for label, count in label_counts.items():
+        print(f"Label {label}: {count} subjects")
+    return subject_fc_matrices,all_labels,num_classes

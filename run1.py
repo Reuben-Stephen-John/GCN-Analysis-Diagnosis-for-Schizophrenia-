@@ -99,20 +99,13 @@ def main():
     order=2
     threshold=0.5
     batch_size = 2
-    subject_fc_matrices,all_labels,num_classes=create_labels()
+    # Set the number of folds
+    num_folds = 5
+    subject_data,all_labels,num_classes=load_subject_data()
     # Check if CUDA is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
 
-    # # First, split into training and test sets
-    # subject_fc_train, subject_fc_test, labels_train, labels_test = train_test_split(
-    #     subject_fc_matrices, all_labels, test_size=test_size, random_state=21)
-    # # Then, split the training set into training and validation sets
-    # subject_fc_train, subject_fc_val, labels_train, labels_val = train_test_split(
-    #     subject_fc_train, labels_train, test_size=validation_size/(1-test_size), random_state=21)
-
-    # Set the number of folds
-    num_folds = 5
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
 
     # Instantiate your model, optimizer, and criterion outside the loop
@@ -120,24 +113,25 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
-    for fold, (train_idx, test_idx) in enumerate(skf.split(subject_fc_matrices, all_labels)):
-        subject_fc_train, subject_fc_test = [subject_fc_matrices[i] for i in train_idx], [subject_fc_matrices[i] for i in test_idx]
+    for fold, (train_idx, test_idx) in enumerate(skf.split(subject_data, all_labels)):
+        subject_train, subject_test = [subject_data[i] for i in train_idx], [subject_data[i] for i in test_idx]
         labels_train, labels_test = [all_labels[i] for i in train_idx], [all_labels[i] for i in test_idx]
 
         # Split the training set into training and validation sets
-        subject_fc_train, subject_fc_val, labels_train, labels_val = train_test_split(
-            subject_fc_train, labels_train, test_size=validation_size / (1 - test_size), random_state=42)
+        subject_train, subject_val, labels_train, labels_val = train_test_split(
+            subject_train, labels_train, test_size=validation_size / (1 - test_size), random_state=42)
         
         # Create PyTorch Geometric Data objects for each set
-        data_train = [create_data_object(sub_conn_matrix, labels, feature_dimensions, order, threshold) for sub_conn_matrix, labels in zip(subject_fc_train, labels_train)]
-        data_val = [create_data_object(sub_conn_matrix, labels, feature_dimensions, order, threshold) for sub_conn_matrix, labels in zip(subject_fc_val, labels_val)]
-        data_test = [create_data_object(sub_conn_matrix, labels, feature_dimensions, order, threshold) for sub_conn_matrix, labels in zip(subject_fc_test, labels_test)]
+        data_train = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]
+        data_val = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_val, labels_val)]
+        data_test = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_test, labels_test)]
         
         # Create DataLoader for each set
         data_loader_train = DataLoader(data_train, batch_size=batch_size, shuffle=True,pin_memory=True)
         data_loader_val = DataLoader(data_val, batch_size=batch_size, shuffle=False,pin_memory=True)
         data_loader_test = DataLoader(data_test, batch_size=batch_size, shuffle=False,pin_memory=True)
-        print(f"fold number: {fold}")
+
+        print(f"fold number: {fold}. len(Train)={len(data_train)}, len(Val)={len(data_val)}, len(Test)={len(data_test)}" )
 
         # Lists to store losses for plotting
         train_losses = []
@@ -168,46 +162,3 @@ def main():
         
 if __name__ == '__main__':
     main()
-
-
-# # Example: Create PyTorch Geometric Data objects for each set
-# data_train = [create_data_object(sub_conn_matrix,labels, feature_dimensions, order,threshold) for sub_conn_matrix, labels in zip(subject_fc_train, labels_train)]
-# data_val = [create_data_object(sub_conn_matrix,labels, feature_dimensions, order,threshold) for sub_conn_matrix, labels in zip(subject_fc_val, labels_val)]
-# data_test = [create_data_object(sub_conn_matrix,labels, feature_dimensions, order,threshold) for sub_conn_matrix, labels in zip(subject_fc_test, labels_test)]
-
-# # Instantiate your model, optimizer, and criterion
-# model = GCN(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes).to(device)
-# optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-# criterion = torch.nn.CrossEntropyLoss().to(device)
-
-# # Lists to store losses for plotting
-# train_losses = []
-# val_losses = []
-
-# # Training loop
-# num_epochs = 50
-# for epoch in range(1, num_epochs + 1):
-#     train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
-#     val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)
-
-#     print(f"Epoch {epoch}/{num_epochs}: "
-#         f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
-#         f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")
-#             # Append losses for plotting
-#     train_losses.append(train_loss)
-#     val_losses.append(val_loss)
-
-# Plotting the losses
-# data_loader_train = DataLoader(data_train, batch_size=batch_size, shuffle=True, pin_memory=True)
-# data_loader_val = DataLoader(data_val, batch_size=batch_size, shuffle=False, pin_memory=True)
-# data_loader_test = DataLoader(data_test, batch_size=batch_size, shuffle=False, pin_memory=True)
-
-# plt.plot(range(1, num_epochs + 1), train_losses, label='Train Loss')
-# plt.plot(range(1, num_epochs + 1), val_losses, label='Validation Loss')
-# plt.xlabel('Epoch')
-# plt.ylabel('Loss')
-# plt.legend()
-# plt.show()
-    
-# test_loss, test_accuracy = test(model, data_loader_test, criterion,device)
-# print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")

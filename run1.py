@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import matplotlib.pyplot as plt
-from models import GCN
+from models import *
 from utils import *
 
 # Function to train the model
@@ -30,7 +30,7 @@ def train(model, train_loader, optimizer, criterion, device):
         all_labels.extend(data.y.cpu().numpy())
 
     accuracy = accuracy_score(all_labels, all_preds)
-    average_loss = total_loss / len(train_loader)
+    average_loss = total_loss / max(1, len(train_loader))  # Avoid division by zero
 
     return average_loss, accuracy
 
@@ -54,11 +54,11 @@ def evaluate(model, val_loader, criterion, device):
             all_labels.extend(data.y.cpu().numpy())
 
     accuracy = accuracy_score(all_labels, all_preds)
-    average_loss = total_loss / len(val_loader)
+    average_loss = total_loss / max(1, len(val_loader))  # Avoid division by zero
 
     return average_loss, accuracy
 
-def test(model, test_loader, criterion,device):
+def test(model, test_loader, criterion, device):
     model.eval()
     total_loss = 0
     all_preds = []
@@ -66,7 +66,7 @@ def test(model, test_loader, criterion,device):
 
     with torch.no_grad():
         for data in test_loader:
-            data=data.to(device)
+            data = data.to(device)  # Move data to GPU
             out = model(data.x, data.edge_index, data.batch)
             loss = criterion(out, data.y)
             total_loss += loss.item()
@@ -76,13 +76,11 @@ def test(model, test_loader, criterion,device):
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(data.y.cpu().numpy())
 
-            # Visualize the graph for one batch (you can adjust this based on your needs)
-            # visualize_graph(data)
-
     accuracy = accuracy_score(all_labels, all_preds)
-    average_loss = total_loss / len(test_loader)
+    average_loss = total_loss / max(1, len(test_loader))  # Avoid division by zero
 
     return average_loss, accuracy
+
 
 def visualize_graph(data):
     # Convert PyTorch Geometric Data object to NetworkX graph
@@ -95,9 +93,7 @@ def visualize_graph(data):
 def main():
     test_size = 0.2
     validation_size = 0.2
-    feature_dimensions=32
-    order=2
-    threshold=0.5
+    feature_dimensions=43
     batch_size = 2
     # Set the number of folds
     num_folds = 5
@@ -109,9 +105,14 @@ def main():
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
 
     # Instantiate your model, optimizer, and criterion outside the loop
-    model = GCN(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes).to(device)
+    # model = GCN(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes).to(device)
+    model = SAGENET(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss().to(device)
+
+    # Lists to store losses for plotting
+    train_losses = []
+    val_losses = []
 
     for fold, (train_idx, test_idx) in enumerate(skf.split(subject_data, all_labels)):
         subject_train, subject_test = [subject_data[i] for i in train_idx], [subject_data[i] for i in test_idx]
@@ -122,9 +123,9 @@ def main():
             subject_train, labels_train, test_size=validation_size / (1 - test_size), random_state=42)
         
         # Create PyTorch Geometric Data objects for each set
-        data_train = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]
-        data_val = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_val, labels_val)]
-        data_test = [create_data_object(sub_conn_matrix, sub_ts, labels, feature_dimensions-11, order, threshold) for (sub_conn_matrix,sub_ts), labels in zip(subject_test, labels_test)]
+        data_train = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]
+        data_val = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_val, labels_val)]
+        data_test = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_test, labels_test)]
         
         # Create DataLoader for each set
         data_loader_train = DataLoader(data_train, batch_size=batch_size, shuffle=True,pin_memory=True)
@@ -133,32 +134,29 @@ def main():
 
         print(f"fold number: {fold}. len(Train)={len(data_train)}, len(Val)={len(data_val)}, len(Test)={len(data_test)}" )
 
-        # Lists to store losses for plotting
-        train_losses = []
-        val_losses = []
         # Training loop
-        num_epochs = 50
+        num_epochs = 20
         for epoch in range(1, num_epochs + 1):
             train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
             val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)
 
             print(f"Epoch {epoch}/{num_epochs}: "
                 f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
-                f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")
-                    # Append losses for plotting
+                f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")    
+            # Append losses for plotting
             train_losses.append(train_loss)
             val_losses.append(val_loss)
         
-        # Plotting the losses
-        plt.plot(range(1, num_epochs + 1), train_losses, label='Train Loss')
-        plt.plot(range(1, num_epochs + 1), val_losses, label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.show()
-            
         test_loss, test_accuracy = test(model, data_loader_test, criterion,device)
         print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    
+    # Plotting the losses
+    plt.plot(range(1, (num_epochs*num_folds)+1), train_losses, label='Train Loss')
+    plt.plot(range(1, (num_epochs*num_folds)+1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
         
 if __name__ == '__main__':
     main()

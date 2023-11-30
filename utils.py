@@ -6,12 +6,6 @@ import networkx as nx
 from tsfresh import select_features, extract_features,feature_extraction
 from tsfresh.utilities.dataframe_functions import impute
 
-# NetMF embedding logic using karate club module
-def netmf_embedding(graph, dimensions=16, order=2):
-    model = NetMF(dimensions=dimensions, order=order,seed=21)
-    model.fit(graph)
-    return model.get_embedding()
-
 def extract_tsfresh_features(x):
     """
     For MRI data sets. Function used for node features extraction from node time series. The features to be computed
@@ -57,6 +51,14 @@ def extract_tsfresh_features(x):
         # print(key, duration)
     return computed_feature_list
 
+# NetMF embedding logic using karate club module
+def netmf_embedding(graph):
+    dimensions=32 
+    order=2
+    model = NetMF(dimensions=dimensions, order=order,seed=21)
+    model.fit(graph)
+    return model.get_embedding()
+
 def temporal_feature_extraction(subject_time_series):
     temporal_features=[]
     for node in range(len(subject_time_series[0,:])):
@@ -64,10 +66,11 @@ def temporal_feature_extraction(subject_time_series):
         temporal_features.append(feature)
     return np.array(temporal_features)
 
-def create_data_object(sub_conn_matrix, sub_ROI_ts, label, dimensions, order, threshold=0.5):
+def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
+    threshold=0.5
     adjacency_matrix = (sub_conn_matrix > threshold).astype(float)
     graph = nx.from_numpy_matrix(adjacency_matrix)
-    netmf_embeddings = netmf_embedding(graph,dimensions, order)  # Replace this with your actual embedding logic
+    netmf_embeddings = netmf_embedding(graph)  # Replace this with your actual embedding logic
     temporal_embeddings= temporal_feature_extraction(sub_ROI_ts)
     # Extract node features from the embeddings
     node_features = torch.tensor(np.concatenate((netmf_embeddings, temporal_embeddings), axis=1), dtype=torch.float32)

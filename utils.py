@@ -67,23 +67,29 @@ def temporal_feature_extraction(subject_time_series):
     return np.array(temporal_features)
 
 def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
-    threshold=0.5
+    threshold = 0
     adjacency_matrix = (sub_conn_matrix > threshold).astype(float)
     graph = nx.from_numpy_matrix(adjacency_matrix)
+    
     netmf_embeddings = netmf_embedding(graph)  # Replace this with your actual embedding logic
-    temporal_embeddings= temporal_feature_extraction(sub_ROI_ts)
+    temporal_embeddings = temporal_feature_extraction(sub_ROI_ts)
+    
     # Extract node features from the embeddings
     node_features = torch.tensor(np.concatenate((netmf_embeddings, temporal_embeddings), axis=1), dtype=torch.float32)
+    # node_features = torch.tensor(netmf_embeddings, dtype=torch.float32)
+    # Extract edge attributes from the connection matrix
+    edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)
     
     edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
     
     # Create PyTorch Geometric Data object
-    data = Data(x=node_features, edge_index=edge_index, y=torch.tensor(label,dtype=torch.long))
+    data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=torch.tensor(label, dtype=torch.long))
+    
     return data
 
 def load_subject_data():
     label=[]
-    subject_fc_matrices=np.load('source_data/fc/fc_matrices.npy')
+    subject_fc_matrices=np.load('source_data/fc/fc_matrices_1.npy')
     subject_time_series=np.load('source_data/time_series/time_series.npy')
     combined_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(subject_fc_matrices, subject_time_series)]
     print(f"Number of Subjects {len(subject_fc_matrices)}")

@@ -16,7 +16,7 @@ def train(model, train_loader, optimizer, criterion, device):
 
     for data in train_loader:# Iterate in batches over the training dataset.
         data = data.to(device)  # Move data to GPU
-        out = model(data.x, data.edge_index, data.batch) # Perform a single forward pass.
+        out = model(data.x, data.edge_index, data.edge_attr, data.batch) # Perform a single forward pass.
         loss = criterion(out, data.y) # Compute the loss.
         loss.backward() # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
@@ -43,7 +43,7 @@ def evaluate(model, val_loader, criterion, device):
     with torch.no_grad():
         for data in val_loader:
             data = data.to(device)  # Move data to GPU
-            out = model(data.x, data.edge_index, data.batch)
+            out = model(data.x, data.edge_index, data.edge_attr, data.batch)
             loss = criterion(out, data.y)
             total_loss += loss.item()
 
@@ -66,7 +66,7 @@ def test(model, test_loader, criterion, device):
     with torch.no_grad():
         for data in test_loader:
             data = data.to(device)  # Move data to GPU
-            out = model(data.x, data.edge_index, data.batch)
+            out = model(data.x, data.edge_index, data.edge_attr, data.batch)
             loss = criterion(out, data.y)
             total_loss += loss.item()
 
@@ -102,7 +102,7 @@ def main():
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
 
     # Instantiate your model, optimizer, and criterion outside the loop
-    model = GCNz(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
+    model = GCNe(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
     
     # model = GAT(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
     

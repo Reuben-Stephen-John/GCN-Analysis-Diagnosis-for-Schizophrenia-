@@ -18,9 +18,9 @@ def train(model, train_loader, optimizer, criterion, device):
         data = data.to(device)  # Move data to GPU
         out = model(data.x, data.edge_index, data.batch) # Perform a single forward pass.
         loss = criterion(out, data.y) # Compute the loss.
+        optimizer.zero_grad()   # Clear the previous gradients.
         loss.backward() # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
-        optimizer.zero_grad()   # Clear gradients.
         total_loss += loss.item()
 
         # Convert logits to predictions
@@ -89,22 +89,27 @@ def visualize_graph(data):
     nx.draw(graph, with_labels=True)
     plt.show()
 
+def count(l):
+    l=np.array(l)
+    print(f'label 0: = {np.sum(l==0)}\n')
+    print(f'label 1: = {np.sum(l==1)}\n')
+    print(f'label 2: = {np.sum(l==2)}\n')
+    
+
 def main():
-    test_size = 0.2
-    validation_size = 0.2
+    val_size = 0.6
     feature_dimensions=43
+    # feature_dimensions=11
     # feature_dimensions=32
-    batch_size = 8
+    batch_size = 16
     # Set the number of folds
-    num_folds = 5
+    num_folds = 3
     subject_data,all_labels,num_classes=load_subject_data()
 
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
 
     # Instantiate your model, optimizer, and criterion outside the loop
-    model = GCNz(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
-    
-    # model = GAT(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
+    # model = GCN(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes)
     
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     # criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -114,14 +119,23 @@ def main():
     val_losses = []
 
     for fold, (train_idx, test_idx) in enumerate(skf.split(subject_data, all_labels)):
+        model = SAGENET(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
         model, device, criterion, optimizer, scheduler = prepare_model(model)
         subject_train, subject_test = [subject_data[i] for i in train_idx], [subject_data[i] for i in test_idx]
         labels_train, labels_test = [all_labels[i] for i in train_idx], [all_labels[i] for i in test_idx]
 
         # Split the training set into training and validation sets
-        subject_train, subject_val, labels_train, labels_val = train_test_split(
-            subject_train, labels_train, test_size=validation_size / (1 - test_size), random_state=42)
+        subject_test, subject_val, labels_test, labels_val = train_test_split(
+            subject_test, labels_test, test_size=val_size, random_state=42)
         
+        # print('Train:= \n')
+        # count(labels_train)
+        # print('Test:= \n')
+        # count(labels_test)
+        # print('Val:= \n')
+        # count(labels_val)
+        
+
         # Create PyTorch Geometric Data objects for each set
         data_train = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]
         data_val = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_val, labels_val)]
@@ -135,7 +149,7 @@ def main():
         print(f"fold number: {fold}. len(Train)={len(data_train)}, len(Val)={len(data_val)}, len(Test)={len(data_test)}" )
 
         # Training loop
-        num_epochs = 50
+        num_epochs = 100
         for epoch in range(1, num_epochs + 1):
             train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
             val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)

@@ -97,7 +97,7 @@ def count(l):
     
 
 def main():
-    val_size = 0.6
+    val_size = 0.5
     feature_dimensions=43
     # feature_dimensions=11
     # feature_dimensions=32
@@ -119,7 +119,7 @@ def main():
     val_losses = []
 
     for fold, (train_idx, test_idx) in enumerate(skf.split(subject_data, all_labels)):
-        model = SAGENET(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
+        model = GAT(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
         model, device, criterion, optimizer, scheduler = prepare_model(model)
         subject_train, subject_test = [subject_data[i] for i in train_idx], [subject_data[i] for i in test_idx]
         labels_train, labels_test = [all_labels[i] for i in train_idx], [all_labels[i] for i in test_idx]
@@ -128,13 +128,12 @@ def main():
         subject_test, subject_val, labels_test, labels_val = train_test_split(
             subject_test, labels_test, test_size=val_size, random_state=42)
         
-        # print('Train:= \n')
-        # count(labels_train)
-        # print('Test:= \n')
-        # count(labels_test)
-        # print('Val:= \n')
-        # count(labels_val)
-        
+        print('Train:= \n')
+        count(labels_train)
+        print('Test:= \n')
+        count(labels_test)
+        print('Val:= \n')
+        count(labels_val)       
 
         # Create PyTorch Geometric Data objects for each set
         data_train = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]

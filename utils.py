@@ -70,7 +70,7 @@ def temporal_feature_extraction(subject_time_series):
     return np.array(temporal_features)
 
 def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
-    threshold = -2
+    threshold = -0.2
     adjacency_matrix = np.where(sub_conn_matrix < threshold, 0, sub_conn_matrix)
     # adjacency_matrix = (sub_conn_matrix > threshold).astype(float)
     graph = nx.from_numpy_matrix(adjacency_matrix)
@@ -100,12 +100,12 @@ def load_subject_data():
     for i in range(len(subject_fc_matrices)):
         if i <25:
             label.append(0)
-        if i>= 25:
-            label.append(1)
-        # if i >= 25 and i<48:
+        # if i>= 25:
         #     label.append(1)
-        # if i >=48:
-        #     label.append(2)
+        if i >= 25 and i<48:
+            label.append(1)
+        if i >=48:
+            label.append(2)
 
     all_labels = np.array(label)
     num_classes=len(set(label))

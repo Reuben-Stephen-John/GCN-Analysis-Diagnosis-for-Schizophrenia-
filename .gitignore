@@ -2,3 +2,7 @@ venv
 Full-Dataset
 nilearn_cache
 __pycache__
+source_data/fc/augmented_fc_matrices.npy
+source_data/fc/augmented_fc_matrices_10.npy
+source_data/time_series/augmented_time_series.npy
+source_data/time_series/augmented_time_series_10.npy

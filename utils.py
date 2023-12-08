@@ -7,6 +7,10 @@ from tsfresh import select_features, extract_features,feature_extraction
 from tsfresh.utilities.dataframe_functions import impute
 from sklearn import metrics
 import pandas as pd
+import matplotlib.pyplot as plt
+
+from torch.nn.functional import normalize
+
 
 
 def extract_tsfresh_features(x):
@@ -64,47 +68,83 @@ def netmf_embedding(graph):
 
 def temporal_feature_extraction(subject_time_series):
     temporal_features=[]
-    for node in range(len(subject_time_series[0,:])):
+    for node in range(len(subject_time_series[:,0])):
         feature=extract_tsfresh_features(subject_time_series[:,node])
         temporal_features.append(feature)
     return np.array(temporal_features)
 
+# def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
+#     threshold = 0.5
+#     adjacency_matrix = np.where(sub_conn_matrix < threshold, 0, sub_conn_matrix)
+
+#     # Normalize node features
+#     temporal_embeddings = temporal_feature_extraction(sub_ROI_ts)
+#     node_features = torch.tensor(temporal_embeddings, dtype=torch.float32)
+
+#     # Normalize edge attributes
+#     edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)
+
+#     # Convert the list of numpy arrays to a single numpy array
+#     edge_index_np = np.array(adjacency_matrix.nonzero())
+
+#     # Create a tensor from the single numpy array
+#     edge_index = torch.tensor(edge_index_np, dtype=torch.long)
+
+#     # Create PyTorch Geometric Data object
+#     data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=torch.tensor(label, dtype=torch.long))
+
+#     return data
+
+
 def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
-    threshold = -0.2
+    threshold = 0.5
     adjacency_matrix = np.where(sub_conn_matrix < threshold, 0, sub_conn_matrix)
     # adjacency_matrix = (sub_conn_matrix > threshold).astype(float)
+    
+    # # Create graph from the adjacency matrix
     graph = nx.from_numpy_matrix(adjacency_matrix)
     
     netmf_embeddings = netmf_embedding(graph)  # Replace this with your actual embedding logic
     temporal_embeddings = temporal_feature_extraction(sub_ROI_ts)
     
     # Extract node features from the embeddings
-    node_features = torch.tensor(np.concatenate((netmf_embeddings, temporal_embeddings), axis=1), dtype=torch.float32)
+    node_features = normalize(torch.tensor(np.concatenate((sub_conn_matrix, temporal_embeddings), axis=1), dtype=torch.float32),dim=0)
     # node_features = torch.tensor(temporal_embeddings, dtype=torch.float32)
     # Extract edge attributes from the connection matrix
-    edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)
+    # edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)     
+    # edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
+
+    # Normalize node features
+    # node_features = normalize(torch.tensor(temporal_embeddings, dtype=torch.float32), dim=0)
+
+    # Normalize edge attributes
+    edge_attr = normalize(torch.tensor(sub_conn_matrix, dtype=torch.float32), dim=0)
     
-    edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
+    # Convert the list of numpy arrays to a single numpy array
+    edge_index_np = np.array(adjacency_matrix.nonzero())
+
+    # Create a tensor from the single numpy array
+    edge_index = torch.tensor(edge_index_np, dtype=torch.long)
     
     # Create PyTorch Geometric Data object
     data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=torch.tensor(label, dtype=torch.long))
     
     return data
 
-def load_subject_data():
+def load_subject_data(num_aug):
     label=[]
-    subject_fc_matrices=np.load('source_data/fc/fc_matrices_1.npy')
-    subject_time_series=np.load('source_data/time_series/time_series.npy')
+    subject_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_10.npy')
+    subject_time_series=np.load('source_data/time_series/augmented_time_series_10.npy')
     combined_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(subject_fc_matrices, subject_time_series)]
     print(f"Number of Subjects {len(subject_fc_matrices)}")
     for i in range(len(subject_fc_matrices)):
-        if i <25:
+        if i <25*num_aug:
             label.append(0)
         # if i>= 25:
         #     label.append(1)
-        if i >= 25 and i<48:
+        if i >= 25*num_aug and i<48*num_aug:
             label.append(1)
-        if i >=48:
+        if i >=48*num_aug:
             label.append(2)
 
     all_labels = np.array(label)
@@ -118,60 +158,55 @@ def load_subject_data():
         print(f"Label {label}: {count} subjects")
     return combined_data, all_labels,num_classes
 
-def compute_metrics(df_res, test_run_name, dataset_name):
+def plot_metrics(num_epochs,train_accuracies,val_accuracies,train_losses,val_losses):
+    # Plotting the losses and accuracies
+    plt.figure(figsize=(10, 5))
+
+    # Plot losses
+    plt.subplot(1, 2, 1)
+    plt.plot(range(1, (num_epochs) + 1), train_losses, label='Train Loss')
+    plt.plot(range(1, (num_epochs) + 1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    # Plot accuracies
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, (num_epochs) + 1), train_accuracies, label='Train Accuracy')
+    plt.plot(range(1, (num_epochs) + 1), val_accuracies, label='Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     """
-    A function which computes various classification metrics from a precomputed pandas data frame (in .xlsx format)
-    :param df_res: pandas data frame in .xlsx format with columns: "trues" - ground truth labels, "preds" - predicted
-    labels
-    :param test_run_name: the name of the test run which the results data frame is representing
-    :return: None, but saves .xlsx with metric results on disk
+    A function which computes various classification metrics and saves the results in .xlsx files.
+    :param all_labels: Ground truth labels
+    :param all_preds: Predicted labels
+    :param save_path: The path to save the results
+    :return: None
     """
-    save_path = f"./{directories['training visualizations']}/{dataset_name}/{test_run_name}"
-    try:
-        os.makedirs(f"./{directories['training visualizations']}/{dataset_name}")
-    except FileExistsError:
-        pass
-    df_res.to_excel(f"{save_path}_trues_preds.xlsx")
-
-    # code borrowed from https://gist.github.com/nickynicolson/202fe765c99af49acb20ea9f77b6255e
-    def cm2df(cm, labels):
-        df = pd.DataFrame()
-        # rows
-        for i, row_label in enumerate(labels):
-            rowdata = {}
-            # columns
-            for j, col_label in enumerate(labels):
-                rowdata[col_label] = cm[i, j]
-            df = df.append(pd.DataFrame.from_dict({row_label: rowdata}, orient='index'))
-        return df[labels]
-
-    # define classes and indexes of true values for each class. For each model the true index values are the
-    # same since the test set was the same.
-    classes = set(df_res["trues"])
-    cls_index = dict()
-    for cls in classes:
-        cls_index[cls] = df_res[df_res["trues"] == cls].index.to_list()
-
     # compute the metrics
-    allmetrics = dict()
-    model_metrics = dict()
-    mcc = metrics.matthews_corrcoef(y_true=df_res["trues"], y_pred=df_res["preds"])
-    f1macro = metrics.f1_score(y_true=df_res["trues"], y_pred=df_res["preds"], average="macro")
-    f1micro = metrics.f1_score(y_true=df_res["trues"], y_pred=df_res["preds"], average="micro")
-    f1weighted = metrics.f1_score(y_true=df_res["trues"], y_pred=df_res["preds"], average="weighted")
-    accuracy_score = metrics.accuracy_score(y_true=df_res["trues"], y_pred=df_res["preds"])
-    balanced_accuracy_score = metrics.balanced_accuracy_score(y_true=df_res["trues"], y_pred=df_res["preds"])
-    precision = metrics.precision_score(y_true=df_res["trues"], y_pred=df_res["preds"], average='macro')
-    recall_score = metrics.recall_score(y_true=df_res["trues"], y_pred=df_res["preds"], average='macro')
+    mcc = metrics.matthews_corrcoef(y_true=all_labels, y_pred=all_preds)
+    f1macro = metrics.f1_score(y_true=all_labels, y_pred=all_preds, average="macro")
+    f1micro = metrics.f1_score(y_true=all_labels, y_pred=all_preds, average="micro")
+    f1weighted = metrics.f1_score(y_true=all_labels, y_pred=all_preds, average="weighted")
+    accuracy_score = metrics.accuracy_score(y_true=all_labels, y_pred=all_preds)
+    balanced_accuracy_score = metrics.balanced_accuracy_score(y_true=all_labels, y_pred=all_preds)
+    precision = metrics.precision_score(y_true=all_labels, y_pred=all_preds, average='macro')
+    recall_score = metrics.recall_score(y_true=all_labels, y_pred=all_preds, average='macro')
 
-    print(metrics.classification_report(y_true=df_res["trues"], y_pred=df_res["preds"]))
-    report = metrics.classification_report(y_true=df_res["trues"], y_pred=df_res["preds"], output_dict=True)
+    print(metrics.classification_report(y_true=all_labels, y_pred=all_preds))
+    report = metrics.classification_report(y_true=all_labels, y_pred=all_preds, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
     df_report.to_excel(f"{save_path}_classif_report.xlsx")
 
     # label_dictionary = classes
-    cm = metrics.confusion_matrix(y_true=df_res["trues"], y_pred=df_res["preds"])
-    cm_as_df = cm2df(cm, classes)
+    cm = metrics.confusion_matrix(y_true=all_labels, y_pred=all_preds)
+    cm_as_df = pd.DataFrame(cm, columns=sorted(set(all_labels)), index=sorted(set(all_labels)))
     cm_as_df.to_excel(f"{save_path}_confusion_matrix.xlsx")
 
     _metrics = {
@@ -184,11 +219,9 @@ def compute_metrics(df_res, test_run_name, dataset_name):
         "precision": precision,
         "recall_score": recall_score
     }
-    for metric in _metrics.keys():
-        model_metrics[metric] = _metrics[metric]
 
-    allmetrics[0] = model_metrics
-
-    dfmetrics = pd.DataFrame.from_dict(allmetrics)
+    dfmetrics = pd.DataFrame.from_dict(_metrics, orient='index', columns=['Value'])
     dfmetrics.to_excel(f"{save_path}_metric_results.xlsx")
     print(dfmetrics)
+
+

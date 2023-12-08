@@ -25,6 +25,8 @@ def prepare_model(model):
         return optim
 
     criterion = torch.nn.CrossEntropyLoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+
     optimizer = get_optimizer(model, lr=0.001, wd=0.00001)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                            mode='max',# In min mode, lr will be reduced when the quantity monitored has stopped decreasing; in max mode it will be reduced when the quantity monitored has stopped increasing. Default: ‘min’.
@@ -34,7 +36,7 @@ def prepare_model(model):
                                                            factor=0.5, #Factor by which the learning rate will be reduced. new_lr = lr * factor. Default: 0.1.
                                                            threshold_mode='rel')
 
-    return model, device, criterion, optimizer, scheduler
+    return model, device, criterion, optimizer , scheduler
 
 
 
@@ -102,6 +104,8 @@ class GCN(torch.nn.Module):
         self.bn2 = BatchNorm(hidden_channels)
         self.conv3 = GraphConv(hidden_channels, hidden_channels)
         self.bn3 = BatchNorm(hidden_channels)
+        self.conv4 = GraphConv(hidden_channels, hidden_channels)
+        self.bn4 = BatchNorm(hidden_channels)
         self.lin = Linear(hidden_channels, number_of_classes)
 
     def forward(self, x, edge_index, batch):
@@ -116,6 +120,9 @@ class GCN(torch.nn.Module):
         x = F.dropout(x, p=ds, training=self.training)
         x = self.conv3(x, edge_index)
         x = self.bn3(x)
+        x = F.dropout(x, p=ds, training=self.training)
+        x = self.conv4(x, edge_index)
+        x = self.bn4(x)
         x = F.dropout(x, p=ds, training=self.training)
 
         x = global_mean_pool(x, batch)

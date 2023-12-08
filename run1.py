@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 import matplotlib.pyplot as plt
 from models import *
 from utils import *
+from tqdm import tqdm
 
 # Function to train the model
 def train(model, train_loader, optimizer, criterion, device):
@@ -97,13 +98,13 @@ def count(l):
     
 
 def main():
-    val_size = 0.5
+    val_size = 0.6
     feature_dimensions=43
     # feature_dimensions=11
     # feature_dimensions=32
-    batch_size = 16
+    batch_size = 4
     # Set the number of folds
-    num_folds = 3
+    num_folds = 5
     subject_data,all_labels,num_classes=load_subject_data()
 
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
@@ -119,7 +120,7 @@ def main():
     val_losses = []
 
     for fold, (train_idx, test_idx) in enumerate(skf.split(subject_data, all_labels)):
-        model = GAT(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
+        model = GCN(hidden_channels=64, number_of_features=feature_dimensions, number_of_classes=num_classes)
         model, device, criterion, optimizer, scheduler = prepare_model(model)
         subject_train, subject_test = [subject_data[i] for i in train_idx], [subject_data[i] for i in test_idx]
         labels_train, labels_test = [all_labels[i] for i in train_idx], [all_labels[i] for i in test_idx]
@@ -128,17 +129,17 @@ def main():
         subject_test, subject_val, labels_test, labels_val = train_test_split(
             subject_test, labels_test, test_size=val_size, random_state=42)
         
-        print('Train:= \n')
-        count(labels_train)
-        print('Test:= \n')
-        count(labels_test)
-        print('Val:= \n')
-        count(labels_val)       
+        # print('Train:= \n')
+        # count(labels_train)
+        # print('Test:= \n')
+        # count(labels_test)
+        # print('Val:= \n')
+        # count(labels_val)       
 
         # Create PyTorch Geometric Data objects for each set
-        data_train = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_train, labels_train)]
-        data_val = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_val, labels_val)]
-        data_test = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix,sub_ts), labels in zip(subject_test, labels_test)]
+        data_train = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix, sub_ts), labels in tqdm(zip(subject_train, labels_train), total=len(subject_train), desc="Processing training data")]
+        data_val = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix, sub_ts), labels in tqdm(zip(subject_val, labels_val), total=len(subject_val), desc="Processing validation data")]
+        data_test = [create_data_object(sub_conn_matrix, sub_ts, labels) for (sub_conn_matrix, sub_ts), labels in tqdm(zip(subject_test, labels_test), total=len(subject_test), desc="Processing test data")]
         
         # Create DataLoader for each set
         data_loader_train = DataLoader(data_train, batch_size=batch_size, shuffle=True,pin_memory=True)

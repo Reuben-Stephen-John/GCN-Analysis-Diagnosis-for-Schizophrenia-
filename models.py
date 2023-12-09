@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.nn import Linear, ReLU, Dropout
+from torch.nn import Linear, ReLU, Dropout,Softmax,Sigmoid
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
@@ -25,6 +25,7 @@ def prepare_model(model):
         return optim
 
     criterion = torch.nn.CrossEntropyLoss()
+    # criterion = torch.nn.BCELoss()
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
     optimizer = get_optimizer(model, lr=0.001, wd=0.00001)
@@ -102,10 +103,10 @@ class GCN(torch.nn.Module):
         self.bn1 = BatchNorm(hidden_channels)
         self.conv2 = GraphConv(hidden_channels, hidden_channels)
         self.bn2 = BatchNorm(hidden_channels)
-        self.conv3 = GraphConv(hidden_channels, hidden_channels)
-        self.bn3 = BatchNorm(hidden_channels)
-        self.conv4 = GraphConv(hidden_channels, hidden_channels)
-        self.bn4 = BatchNorm(hidden_channels)
+        # self.conv3 = GraphConv(hidden_channels, hidden_channels)
+        # self.bn3 = BatchNorm(hidden_channels)
+        # self.conv4 = GraphConv(hidden_channels, hidden_channels)
+        # self.bn4 = BatchNorm(hidden_channels)
         self.lin = Linear(hidden_channels, number_of_classes)
 
     def forward(self, x, edge_index, batch):
@@ -118,17 +119,20 @@ class GCN(torch.nn.Module):
         x = x.relu()
         x = self.bn2(x)
         x = F.dropout(x, p=ds, training=self.training)
-        x = self.conv3(x, edge_index)
-        x = self.bn3(x)
-        x = F.dropout(x, p=ds, training=self.training)
-        x = self.conv4(x, edge_index)
-        x = self.bn4(x)
+        # x = self.conv3(x, edge_index)
+        # x = x.relu()
+        # x = self.bn3(x)
+        # x = F.dropout(x, p=ds, training=self.training)
+        # x = self.conv4(x, edge_index)
+        # x = x.relu()
+        # x = self.bn4(x)
         x = F.dropout(x, p=ds, training=self.training)
 
         x = global_mean_pool(x, batch)
 
         x = F.dropout(x, p=ds, training=self.training)
         x = self.lin(x)
+        x = F.softmax(x,dim=1)
 
         return x
 

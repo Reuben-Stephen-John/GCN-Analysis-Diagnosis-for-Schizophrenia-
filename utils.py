@@ -5,21 +5,13 @@ import numpy as np
 import networkx as nx
 from tsfresh import select_features, extract_features,feature_extraction
 from tsfresh.utilities.dataframe_functions import impute
-from sklearn import metrics
+from sklearn import metrics,preprocessing
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from torch.nn.functional import normalize
 
 
-
 def extract_tsfresh_features(x):
-    """
-    For MRI data sets. Function used for node features extraction from node time series. The features to be computed
-    from tsfresh package are defined in functions_to_test dictionary
-    :param x: numpy array containing a time series
-    :return: a list of values of computed features
-    """
 
     functions_to_test = {
         "asof": feature_extraction.feature_calculators.absolute_sum_of_changes,
@@ -73,49 +65,16 @@ def temporal_feature_extraction(subject_time_series):
         temporal_features.append(feature)
     return np.array(temporal_features)
 
-# def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
-#     threshold = 0.5
-#     adjacency_matrix = np.where(sub_conn_matrix < threshold, 0, sub_conn_matrix)
-
-#     # Normalize node features
-#     temporal_embeddings = temporal_feature_extraction(sub_ROI_ts)
-#     node_features = torch.tensor(temporal_embeddings, dtype=torch.float32)
-
-#     # Normalize edge attributes
-#     edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)
-
-#     # Convert the list of numpy arrays to a single numpy array
-#     edge_index_np = np.array(adjacency_matrix.nonzero())
-
-#     # Create a tensor from the single numpy array
-#     edge_index = torch.tensor(edge_index_np, dtype=torch.long)
-
-#     # Create PyTorch Geometric Data object
-#     data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, y=torch.tensor(label, dtype=torch.long))
-
-#     return data
-
 
 def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
     threshold = 0.5
     adjacency_matrix = np.where(sub_conn_matrix < threshold, 0, sub_conn_matrix)
     # adjacency_matrix = (sub_conn_matrix > threshold).astype(float)
     
-    # # Create graph from the adjacency matrix
-    graph = nx.from_numpy_matrix(adjacency_matrix)
-    
-    netmf_embeddings = netmf_embedding(graph)  # Replace this with your actual embedding logic
-    temporal_embeddings = temporal_feature_extraction(sub_ROI_ts)
+    temporal_embeddings = preprocessing.normalize(temporal_feature_extraction(sub_ROI_ts))
     
     # Extract node features from the embeddings
-    node_features = normalize(torch.tensor(np.concatenate((sub_conn_matrix, temporal_embeddings), axis=1), dtype=torch.float32),dim=0)
-    # node_features = torch.tensor(temporal_embeddings, dtype=torch.float32)
-    # Extract edge attributes from the connection matrix
-    # edge_attr = torch.tensor(sub_conn_matrix, dtype=torch.float32)     
-    # edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
-
-    # Normalize node features
-    # node_features = normalize(torch.tensor(temporal_embeddings, dtype=torch.float32), dim=0)
+    node_features = torch.tensor(np.concatenate((sub_conn_matrix, temporal_embeddings), axis=1), dtype=torch.float32)
 
     # Normalize edge attributes
     edge_attr = normalize(torch.tensor(sub_conn_matrix, dtype=torch.float32), dim=0)
@@ -202,12 +161,12 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     print(metrics.classification_report(y_true=all_labels, y_pred=all_preds))
     report = metrics.classification_report(y_true=all_labels, y_pred=all_preds, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    df_report.to_excel(f"{save_path}_classif_report.xlsx")
+    df_report.to_excel(f"{save_path}_classif_report_1.xlsx")
 
     # label_dictionary = classes
     cm = metrics.confusion_matrix(y_true=all_labels, y_pred=all_preds)
     cm_as_df = pd.DataFrame(cm, columns=sorted(set(all_labels)), index=sorted(set(all_labels)))
-    cm_as_df.to_excel(f"{save_path}_confusion_matrix.xlsx")
+    cm_as_df.to_excel(f"{save_path}_confusion_matrix_1.xlsx")
 
     _metrics = {
         "MCC": mcc,
@@ -221,7 +180,7 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     }
 
     dfmetrics = pd.DataFrame.from_dict(_metrics, orient='index', columns=['Value'])
-    dfmetrics.to_excel(f"{save_path}_metric_results.xlsx")
+    dfmetrics.to_excel(f"{save_path}_metric_results_1.xlsx")
     print(dfmetrics)
 
 

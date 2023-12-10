@@ -95,13 +95,12 @@ def count(l):
 
 def main():
     val_size = 0.2
-    test_size = 0.5
     num_aug=5
     feature_dimensions=116+11
     # feature_dimensions=43
     # feature_dimensions=11
     # feature_dimensions=32
-    batch_size = 64
+    batch_size = 16
     subject_train,subject_test,labels_train,labels_test,num_classes=load_subject_data(num_aug)
 
     subject_train, subject_val, labels_train, labels_val = train_test_split(
@@ -113,8 +112,8 @@ def main():
     #     subject_val, labels_val, test_size=test_size,shuffle=True, random_state=42)
 
     # model = GAT(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes)
-    # model = SAGENET(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) batch_size = 32
-    # model = GCN(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16
+    # model = SAGENET(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 32,16
+    model = GCN(hidden_channels=32, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16
     model, device, criterion, optimizer, scheduler = prepare_model(model)
     # model, device, criterion, optimizer = prepare_model(model)
     # Create PyTorch Geometric Data objects for each set
@@ -137,7 +136,7 @@ def main():
     val_accuracies = []
 
     # Training loop
-    num_epochs = 30
+    num_epochs = 50
     for epoch in range(1, num_epochs + 1):
         train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
         val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)

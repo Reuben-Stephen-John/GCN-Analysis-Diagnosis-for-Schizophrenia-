@@ -108,7 +108,7 @@ class GCN(torch.nn.Module):
         self.lin = Linear(hidden_channels, number_of_classes)
 
     def forward(self, x, edge_index, batch):
-        ds = 0.75
+        ds = 0.70
         x = self.conv1(x, edge_index)
         x = x.relu()
         x = self.bn1(x)

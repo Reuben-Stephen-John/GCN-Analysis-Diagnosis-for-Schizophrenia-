@@ -61,7 +61,7 @@ def netmf_embedding(graph):
 def temporal_feature_extraction(subject_time_series):
     temporal_features=[]
     for node in range(len(subject_time_series[:,0])):
-        feature=extract_tsfresh_features(subject_time_series[:,node])
+        feature=extract_tsfresh_features(subject_time_series[node,:])
         temporal_features.append(feature)
     return np.array(temporal_features)
 
@@ -93,10 +93,10 @@ def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
 def load_subject_data(num_aug):
     train_label=[]
     test_label=[]
-    train_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_10_4_train.npy')
-    train_time_series=np.load('source_data/time_series/augmented_time_series_10_4_train.npy')
-    test_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_5_4_test.npy')
-    test_time_series=np.load('source_data/time_series/augmented_time_series_5_4_test.npy')
+    train_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_10_4_train_reversed.npy')
+    train_time_series=np.load('source_data/time_series/augmented_time_series_10_4_train_reversed.npy')
+    test_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_5_4_test_reversed.npy')
+    test_time_series=np.load('source_data/time_series/augmented_time_series_5_4_test_reversed.npy')
     combined_train_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(train_fc_matrices, train_time_series)]
     combined_test_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(test_fc_matrices, test_time_series)]
     print(f"Number of Train Subjects {len(train_fc_matrices)}")
@@ -158,7 +158,7 @@ def plot_metrics(num_epochs,train_accuracies,val_accuracies,train_losses,val_los
     plt.tight_layout()
     plt.show()
 
-def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
+def compute_metrics(all_labels, all_preds, save_path='metrics/GCN/model'):
     """
     A function which computes various classification metrics and saves the results in .xlsx files.
     :param all_labels: Ground truth labels
@@ -179,12 +179,12 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     print(metrics.classification_report(y_true=all_labels, y_pred=all_preds))
     report = metrics.classification_report(y_true=all_labels, y_pred=all_preds, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    df_report.to_excel(f"{save_path}_classif_report_u.xlsx")
+    df_report.to_excel(f"{save_path}_classif_report_GCN_reverse.xlsx")
 
     # label_dictionary = classes
     cm = metrics.confusion_matrix(y_true=all_labels, y_pred=all_preds)
     cm_as_df = pd.DataFrame(cm, columns=sorted(set(all_labels)), index=sorted(set(all_labels)))
-    cm_as_df.to_excel(f"{save_path}_confusion_matrix_u.xlsx")
+    cm_as_df.to_excel(f"{save_path}_confusion_matrix_GCN_reverse.xlsx")
 
     _metrics = {
         "MCC": mcc,
@@ -198,7 +198,7 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     }
 
     dfmetrics = pd.DataFrame.from_dict(_metrics, orient='index', columns=['Value'])
-    dfmetrics.to_excel(f"{save_path}_metric_results_u.xlsx")
+    dfmetrics.to_excel(f"{save_path}_metric_results_GCN_reverse.xlsx")
     print(dfmetrics)
 
 

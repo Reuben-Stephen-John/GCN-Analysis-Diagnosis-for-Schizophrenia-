@@ -91,31 +91,49 @@ def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
     return data
 
 def load_subject_data(num_aug):
-    label=[]
-    subject_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_10.npy')
-    subject_time_series=np.load('source_data/time_series/augmented_time_series_10.npy')
-    combined_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(subject_fc_matrices, subject_time_series)]
-    print(f"Number of Subjects {len(subject_fc_matrices)}")
-    for i in range(len(subject_fc_matrices)):
-        if i <25*num_aug:
-            label.append(0)
-        # if i>= 25:
-        #     label.append(1)
-        if i >= 25*num_aug and i<48*num_aug:
-            label.append(1)
-        if i >=48*num_aug:
-            label.append(2)
+    train_label=[]
+    test_label=[]
+    train_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_10_4_train.npy')
+    train_time_series=np.load('source_data/time_series/augmented_time_series_10_4_train.npy')
+    test_fc_matrices=np.load('source_data/fc/augmented_fc_matrices_5_4_test.npy')
+    test_time_series=np.load('source_data/time_series/augmented_time_series_5_4_test.npy')
+    combined_train_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(train_fc_matrices, train_time_series)]
+    combined_test_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(test_fc_matrices, test_time_series)]
+    print(f"Number of Train Subjects {len(train_fc_matrices)}")
+    print(f"Number of Test Subjects {len(test_fc_matrices)}")
+    for i in range(len(train_fc_matrices)):
+        if i <21*num_aug*2:
+            train_label.append(0)
+        if i >= 21*num_aug*2 and i<41*num_aug*2:
+            train_label.append(1)
+        if i >=41*num_aug*2:
+            train_label.append(2)
+    for i in range(len(test_fc_matrices)):
+        if i <4*num_aug:
+            test_label.append(0)
+        if i >= 4*num_aug and i<7*num_aug:
+            test_label.append(1)
+        if i >=7*num_aug:
+            test_label.append(2)
 
-    all_labels = np.array(label)
-    num_classes=len(set(label))
+    train_labels = np.array(train_label)
+    test_labels = np.array(test_label)
+    num_classes=len(set(train_label))
     # Find unique labels and their counts
-    unique_labels, counts = np.unique(all_labels, return_counts=True)
+    unique_train_labels, counts = np.unique(train_labels, return_counts=True)
+    unique_test_labels, count = np.unique(test_labels, return_counts=True)
     # Create a dictionary to store the counts for each unique label
-    label_counts = dict(zip(unique_labels, counts))
+    label_train_counts = dict(zip(unique_train_labels, counts))
+    label_test_counts = dict(zip(unique_test_labels, count))
     # Print the results
-    for label, count in label_counts.items():
+    print('Train :=')
+    for label, count in label_train_counts.items():
         print(f"Label {label}: {count} subjects")
-    return combined_data, all_labels,num_classes
+    print('Test :=')
+    for label, count in label_test_counts.items():
+        print(f"Label {label}: {count} subjects")
+
+    return combined_train_data, combined_test_data,train_labels,test_labels,num_classes
 
 def plot_metrics(num_epochs,train_accuracies,val_accuracies,train_losses,val_losses):
     # Plotting the losses and accuracies
@@ -161,12 +179,12 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     print(metrics.classification_report(y_true=all_labels, y_pred=all_preds))
     report = metrics.classification_report(y_true=all_labels, y_pred=all_preds, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    df_report.to_excel(f"{save_path}_classif_report_1.xlsx")
+    df_report.to_excel(f"{save_path}_classif_report_u.xlsx")
 
     # label_dictionary = classes
     cm = metrics.confusion_matrix(y_true=all_labels, y_pred=all_preds)
     cm_as_df = pd.DataFrame(cm, columns=sorted(set(all_labels)), index=sorted(set(all_labels)))
-    cm_as_df.to_excel(f"{save_path}_confusion_matrix_1.xlsx")
+    cm_as_df.to_excel(f"{save_path}_confusion_matrix_u.xlsx")
 
     _metrics = {
         "MCC": mcc,
@@ -180,7 +198,7 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/model'):
     }
 
     dfmetrics = pd.DataFrame.from_dict(_metrics, orient='index', columns=['Value'])
-    dfmetrics.to_excel(f"{save_path}_metric_results_1.xlsx")
+    dfmetrics.to_excel(f"{save_path}_metric_results_u.xlsx")
     print(dfmetrics)
 
 

@@ -78,21 +78,13 @@ def test(model, test_loader, criterion, device):
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(data.y.cpu().numpy())
 
-    compute_metrics(all_labels,all_preds)
+    # compute_metrics(all_labels,all_preds)
     accuracy = accuracy_score(all_labels, all_preds)
     print(all_preds)
     average_loss = total_loss / max(1, len(test_loader))  # Avoid division by zero
 
     return average_loss, accuracy
 
-
-def visualize_graph(data):
-    # Convert PyTorch Geometric Data object to NetworkX graph
-    graph = nx.to_networkx_graph(data)
-    # Visualize the graph
-    plt.figure(figsize=(8, 8))
-    nx.draw(graph, with_labels=True)
-    plt.show()
 
 def count(l):
     l=np.array(l)
@@ -104,41 +96,13 @@ def count(l):
 def main():
     val_size = 0.2
     test_size = 0.5
-    num_aug=10
+    num_aug=5
     feature_dimensions=116+11
     # feature_dimensions=43
     # feature_dimensions=11
     # feature_dimensions=32
-    batch_size = 32
-    subject_data,all_labels,num_classes=load_subject_data(num_aug)
-    # Extract the first 17 subjects
-    subject_train = subject_data[:(20 * 10) + 1]
-    train_label_0 = all_labels[:(20 * 10) + 1]
-
-    # Extract one augmented data from the next 8 subjects for each block of 23 subjects
-    subject_test = []
-    labels_test = []
-    for i in range(200, 251):
-        subject_test.append(subject_data[i])
-        labels_test.append(all_labels[i])
-
-    subject_train.extend(subject_data[251:(44 * 10)+1])
-    train_label_1 = all_labels[251:(44 * 10)+1]
-
-    for i in range(440, 481):
-        subject_test.append(subject_data[i])
-        labels_test.append(all_labels[i])
-
-    subject_train.extend(subject_data[481:(68 * 10)+1])
-    train_label_2 = all_labels[481:(68 * 10)+1]
-
-    for i in range(681, 710):
-        subject_test.append(subject_data[i])
-        labels_test.append(all_labels[i])
-
-    labels_train = np.concatenate((train_label_0, train_label_1, train_label_2), axis=0)
-
-    subject_train,labels_train=shuffle(subject_train,labels_train,random_state=42)
+    batch_size = 64
+    subject_train,subject_test,labels_train,labels_test,num_classes=load_subject_data(num_aug)
 
     subject_train, subject_val, labels_train, labels_val = train_test_split(
         subject_train, labels_train, test_size=val_size,shuffle=True, random_state=42)
@@ -148,8 +112,9 @@ def main():
     # subject_test, subject_val, labels_test, labels_val = train_test_split(
     #     subject_val, labels_val, test_size=test_size,shuffle=True, random_state=42)
 
-    # model = GCN(hidden_channels=80, number_of_features=feature_dimensions, number_of_classes=num_classes)
-    model = GCN(hidden_channels=84, number_of_features=feature_dimensions, number_of_classes=num_classes)
+    # model = GAT(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes)
+    # model = SAGENET(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) batch_size = 32
+    # model = GCN(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16
     model, device, criterion, optimizer, scheduler = prepare_model(model)
     # model, device, criterion, optimizer = prepare_model(model)
     # Create PyTorch Geometric Data objects for each set
@@ -172,7 +137,7 @@ def main():
     val_accuracies = []
 
     # Training loop
-    num_epochs = 50
+    num_epochs = 30
     for epoch in range(1, num_epochs + 1):
         train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
         val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)

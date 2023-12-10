@@ -103,14 +103,12 @@ class GCN(torch.nn.Module):
         self.bn1 = BatchNorm(hidden_channels)
         self.conv2 = GraphConv(hidden_channels, hidden_channels)
         self.bn2 = BatchNorm(hidden_channels)
-        # self.conv3 = GraphConv(hidden_channels, hidden_channels)
-        # self.bn3 = BatchNorm(hidden_channels)
-        # self.conv4 = GraphConv(hidden_channels, hidden_channels)
-        # self.bn4 = BatchNorm(hidden_channels)
+        self.conv3 = GraphConv(hidden_channels, hidden_channels)
+        self.bn3 = BatchNorm(hidden_channels)
         self.lin = Linear(hidden_channels, number_of_classes)
 
     def forward(self, x, edge_index, batch):
-        ds = 0.65
+        ds = 0.75
         x = self.conv1(x, edge_index)
         x = x.relu()
         x = self.bn1(x)
@@ -119,13 +117,9 @@ class GCN(torch.nn.Module):
         x = x.relu()
         x = self.bn2(x)
         x = F.dropout(x, p=ds, training=self.training)
-        # x = self.conv3(x, edge_index)
-        # x = x.relu()
-        # x = self.bn3(x)
-        # x = F.dropout(x, p=ds, training=self.training)
-        # x = self.conv4(x, edge_index)
-        # x = x.relu()
-        # x = self.bn4(x)
+        x = self.conv3(x, edge_index)
+        x = x.relu()
+        x = self.bn3(x)
         x = F.dropout(x, p=ds, training=self.training)
 
         x = global_mean_pool(x, batch)

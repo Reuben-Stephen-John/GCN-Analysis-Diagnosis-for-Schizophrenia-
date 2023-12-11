@@ -77,8 +77,9 @@ def test(model, test_loader, criterion, device):
             preds = torch.argmax(out, dim=1)
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(data.y.cpu().numpy())
-
-    # compute_metrics(all_labels,all_preds)
+    n=int(input())
+    if n==1:
+        compute_metrics(all_labels,all_preds)
     accuracy = accuracy_score(all_labels, all_preds)
     print(all_preds)
     average_loss = total_loss / max(1, len(test_loader))  # Avoid division by zero
@@ -95,25 +96,26 @@ def count(l):
 
 def main():
     val_size = 0.2
-    num_aug=5
+    test_size = 0.5
+    num_aug=10
     feature_dimensions=116+11
     # feature_dimensions=43
     # feature_dimensions=11
     # feature_dimensions=32
-    batch_size = 16
-    subject_train,subject_test,labels_train,labels_test,num_classes=load_subject_data(num_aug)
+    batch_size = 8
+    subject_data,all_labels,num_classes=load_subject_data(num_aug)
 
-    subject_train, subject_val, labels_train, labels_val = train_test_split(
-        subject_train, labels_train, test_size=val_size,shuffle=True, random_state=42)
-    # Split the training set into training and validation sets
     # subject_train, subject_val, labels_train, labels_val = train_test_split(
-    #     subject_data, all_labels, test_size=val_size,shuffle=True, random_state=42)
-    # subject_test, subject_val, labels_test, labels_val = train_test_split(
-    #     subject_val, labels_val, test_size=test_size,shuffle=True, random_state=42)
+    #     subject_train, labels_train, test_size=val_size,shuffle=True, random_state=42)
+    # Split the training set into training and validation sets
+    subject_train, subject_val, labels_train, labels_val = train_test_split(
+        subject_data, all_labels, test_size=val_size,shuffle=True, random_state=42)
+    subject_test, subject_val, labels_test, labels_val = train_test_split(
+        subject_val, labels_val, test_size=test_size,shuffle=True, random_state=42)
 
     # model = GAT(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes)
-    # model = SAGENET(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 32,16
-    model = GCN(hidden_channels=32, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16
+    # model = SAGENET(hidden_channels=14, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 32,16, epochs = 20
+    # model = GCN(hidden_channels=20, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16, epochs = 29
     model, device, criterion, optimizer, scheduler = prepare_model(model)
     # model, device, criterion, optimizer = prepare_model(model)
     # Create PyTorch Geometric Data objects for each set
@@ -136,7 +138,7 @@ def main():
     val_accuracies = []
 
     # Training loop
-    num_epochs = 50
+    num_epochs = 20
     for epoch in range(1, num_epochs + 1):
         train_loss, train_accuracy = train(model, data_loader_train, optimizer, criterion,device)
         val_loss, val_accuracy = evaluate(model, data_loader_val, criterion,device)

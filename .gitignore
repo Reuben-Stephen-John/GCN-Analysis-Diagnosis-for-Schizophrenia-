@@ -4,3 +4,5 @@ nilearn_cache
 __pycache__
 source_data/fc/
 source_data/time_series/
+source_data/fc1/
+source_data/ts1/

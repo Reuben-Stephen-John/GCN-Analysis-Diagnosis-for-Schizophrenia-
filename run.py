@@ -114,7 +114,7 @@ def main():
         subject_val, labels_val, test_size=test_size,shuffle=True, random_state=42)
 
     # model = GAT(hidden_channels=16, number_of_features=feature_dimensions, number_of_classes=num_classes)
-    # model = SAGENET(hidden_channels=14, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 32,16, epochs = 20
+    model = SAGENET(hidden_channels=14, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 32,16,8 epochs = 20
     # model = GCN(hidden_channels=20, number_of_features=feature_dimensions, number_of_classes=num_classes) # batch_size = 16, epochs = 29
     model, device, criterion, optimizer, scheduler = prepare_model(model)
     # model, device, criterion, optimizer = prepare_model(model)

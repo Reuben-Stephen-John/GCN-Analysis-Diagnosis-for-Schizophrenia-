@@ -92,8 +92,8 @@ def create_data_object(sub_conn_matrix, sub_ROI_ts, label):
 
 def load_subject_data(num_aug):
     all_labels=[]
-    train_fc_matrices=np.load('source_data/fc1/augmented_fc_matrices_10_4_sentences.npy')
-    train_time_series=np.load('source_data/ts1/augmented_time_series_10_4_sentences.npy')
+    train_fc_matrices=np.load('source_data/fc1/augmented_fc_matrices_10_4_reversed.npy')
+    train_time_series=np.load('source_data/ts1/augmented_time_series_10_4_reversed.npy')
     combined_train_data = [(fc_matrix, time_series) for fc_matrix, time_series in zip(train_fc_matrices, train_time_series)]
     print(f"Number of Train Subjects {len(train_fc_matrices)}")
     for i in range(len(train_fc_matrices)):
@@ -160,12 +160,12 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/SageNet/model'):
     print(metrics.classification_report(y_true=all_labels, y_pred=all_preds))
     report = metrics.classification_report(y_true=all_labels, y_pred=all_preds, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    df_report.to_excel(f"{save_path}_classif_report_sagenet_sentences.xlsx")
+    df_report.to_excel(f"{save_path}_classif_report_sagenet_reversed.xlsx")
 
     # label_dictionary = classes
     cm = metrics.confusion_matrix(y_true=all_labels, y_pred=all_preds)
     cm_as_df = pd.DataFrame(cm, columns=sorted(set(all_labels)), index=sorted(set(all_labels)))
-    cm_as_df.to_excel(f"{save_path}_confusion_matrix_sagenet_sentences.xlsx")
+    cm_as_df.to_excel(f"{save_path}_confusion_matrix_sagenet_reversed.xlsx")
 
     _metrics = {
         "MCC": mcc,
@@ -179,7 +179,7 @@ def compute_metrics(all_labels, all_preds, save_path='metrics/SageNet/model'):
     }
 
     dfmetrics = pd.DataFrame.from_dict(_metrics, orient='index', columns=['Value'])
-    dfmetrics.to_excel(f"{save_path}_metric_results_sagenet_reverse.xlsx")
+    dfmetrics.to_excel(f"{save_path}_metric_results_sagenet_reversed.xlsx")
     print(dfmetrics)
 
 
